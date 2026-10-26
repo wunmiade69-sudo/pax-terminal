@@ -53,7 +53,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * PAX Terminal 0.4.1. Runs a Debian ARM64 userspace under PRoot.
+ * PAX Terminal 0.4.2. Runs a Debian ARM64 userspace under PRoot.
  * The environment remains inside this Android app's private sandbox.
  */
 public final class MainActivity extends Activity {
@@ -134,7 +134,7 @@ public final class MainActivity extends Activity {
         brand.setTextSize(20);
         brand.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
         TextView subtitle = new TextView(this);
-        subtitle.setText("DEBIAN ARM64 DEV WORKSPACE  /  v0.4.1");
+        subtitle.setText("DEBIAN ARM64 DEV WORKSPACE  /  v0.4.2");
         subtitle.setTextColor(MUTED);
         subtitle.setTextSize(9);
         subtitle.setLetterSpacing(0.07f);
@@ -289,7 +289,7 @@ public final class MainActivity extends Activity {
             if ("arm64-v8a".equals(abi)) { arm64 = true; break; }
         }
         if (!arm64) {
-            appendOutput("PAX Terminal v0.4.1 currently requires a 64-bit ARM Android device (arm64-v8a).\n");
+            appendOutput("PAX Terminal v0.4.2 currently requires a 64-bit ARM Android device (arm64-v8a).\n");
             updateShellBadge("UNSUPPORTED DEVICE", AMBER);
             return;
         }
@@ -384,7 +384,7 @@ public final class MainActivity extends Activity {
             outputThread.setDaemon(true);
             outputThread.start();
 
-            appendOutput("PAX TERMINAL  /  v0.4.1\n");
+            appendOutput("PAX TERMINAL  /  v0.4.2\n");
             appendOutput("Debian GNU/Linux ARM64 workspace running under PRoot.\n");
             appendOutput("Workspace: " + GUEST_HOME + "  |  Package command: pkg\n");
             appendOutput("Try: pkg update  |  pkg install nodejs npm pnpm python git deno build-essential\n");
@@ -797,7 +797,7 @@ public final class MainActivity extends Activity {
             showFileBrowser();
             showPrompt();
         } else {
-            appendOutput("PAX Terminal v0.4.1 — Debian ARM64 developer environment.\n\n");
+            appendOutput("PAX Terminal v0.4.2 — Debian ARM64 developer environment.\n\n");
             showPrompt();
         }
     }
@@ -819,7 +819,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showHelp() {
-        appendOutput("PAX TERMINAL HELP  /  v0.4.1\n");
+        appendOutput("PAX TERMINAL HELP  /  v0.4.2\n");
         appendOutput("────────────────────────────────────────────\n");
         appendOutput("Shell: pwd, ls -la, cd, find, grep, cat, echo, date, id\n");
         appendOutput("Packages: pkg update  |  pkg install nodejs npm pnpm git python deno build-essential\n");
@@ -869,7 +869,7 @@ public final class MainActivity extends Activity {
 
     private void showAbout() {
         new AlertDialog.Builder(this)
-                .setTitle("PAX Terminal v0.4.1")
+                .setTitle("PAX Terminal v0.4.2")
                 .setMessage("A native Android terminal with a Debian ARM64 environment, Node.js, npm, Git, Python 3 and native build tools. The shared workspace is exposed at /home/pax and /workspace.\n\nThe pkg command uses Debian apt repositories and package names. PRoot provides a rootless Linux environment; it does not grant Android root access. This version uses line-oriented input rather than a full PTY, so full-screen interactive applications are not guaranteed. Use pax-bg, pax-jobs, pax-logs and pax-stop to run and manage background services. Modern Android APK builds are most reliable through the included GitHub Actions workflow.")
                 .setPositiveButton("OK", null)
                 .show();

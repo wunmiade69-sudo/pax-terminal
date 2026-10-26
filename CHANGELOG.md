@@ -1,5 +1,12 @@
 # PAX Terminal changelog
 
+## v0.4.2
+
+- Fixed the native PRoot/talloc link failure caused by `telldir` and `seekdir` being unavailable at Android API 21.
+- Set the native ARM64 toolchain baseline to Android API 26, matching the app's `minSdk` and the API level required for these Bionic functions.
+- Added a workflow guard to verify the API 26 setting before starting the native build.
+- Bumped the Android app version and APK artifact name to v0.4.2.
+
 ## v0.4.1
 
 - Fixed the native PRoot build workflow: use talloc 2.4.3 instead of legacy talloc 2.1.14, whose bundled Waf fails on Python 3 runners with `except Utils.WafError, e` syntax.

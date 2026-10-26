@@ -24,11 +24,15 @@ for token in required:
             raise SystemExit(f'Missing manifest permission: {token}')
     elif token not in main:
         raise SystemExit(f'Missing expected terminal implementation token: {token}')
-if 'versionName = "0.4.1"' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App version does not match v0.4.1')
+if 'versionName = "0.4.2"' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App version does not match v0.4.2')
 workflow = (root / '.github/workflows/build-apk.yml').read_text()
 if '2.4.3' not in workflow or 'Could not pin the talloc build dependency' not in workflow:
     raise SystemExit('Missing talloc/Waf Python 3 compatibility fix')
+if "sed -i 's/else API=21/else API=26/' config" not in workflow:
+    raise SystemExit('Missing native API 26 fix for telldir/seekdir')
+if 'Could not set the PRoot native build API to 26' not in workflow:
+    raise SystemExit('Missing native API baseline guard')
 dockerfile = (root / 'runtime/Dockerfile.debian').read_text()
 for token in ('pnpm', 'typescript', 'tsx', 'deno', 'bun', 'python-is-python3'):
     if token not in dockerfile:

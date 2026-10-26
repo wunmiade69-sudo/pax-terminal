@@ -75,6 +75,19 @@ jobs:
           fi
           echo 'Pinned talloc build dependency:'
           grep -n '2.4.3' config
+
+          # talloc's replace_testsuite fixture calls telldir()/seekdir().
+          # Android exposes these functions from API 23, while this app's
+          # minimum supported API is 26. The upstream build config defaults
+          # to API 21, which produces implicit-declaration warnings and
+          # undefined-symbol failures while linking replace_testsuite.
+          sed -i 's/else API=21/else API=26/' config
+          if ! grep -qE '^[[:space:]]*else API=26$' config; then
+            echo 'Could not set the PRoot native build API to 26 (telldir/seekdir require API 23+).' >&2
+            exit 1
+          fi
+          echo 'Configured PRoot/talloc native API baseline:'
+          grep -n 'API=26' config
           test -x "$SDK_ROOT/ndk/23.2.8568313/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
           ./build.sh
           ./make-proot-for-apk.sh
@@ -140,7 +153,7 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v7
         with:
-          name: pax-terminal-v0.4.1-debug-apk
+          name: pax-terminal-v0.4.2-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256

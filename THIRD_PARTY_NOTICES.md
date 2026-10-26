@@ -7,7 +7,7 @@ PAX Terminal packages open-source software into its Android build. Respect the o
 - Project: `green-green-avk/build-proot-android`
 - Source: https://github.com/green-green-avk/build-proot-android
 - License: MIT. The upstream `LICENSE` file should be consulted for its full terms.
-- The build workflow retrieves these scripts at build time, pins talloc 2.4.3 for Python 3-compatible build tooling, and compiles Android-compatible PRoot native binaries.
+- The build workflow retrieves these scripts at build time, pins talloc 2.4.3 for Python 3-compatible build tooling, targets Android API 26 for native API compatibility, and compiles Android-compatible PRoot native binaries.
 
 ## PRoot runtime
 
