@@ -28,7 +28,7 @@ if 'versionName = "0.4.5"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('App version does not match v0.4.5')
 if 'versionCode = 9' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('App versionCode must be 9 for v0.4.5')
-if 'noCompress += "gz"' not in (root / 'app/build.gradle.kts').read_text():
+if 'noCompress += "rootfs"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('The compressed rootfs asset must bypass APK-level recompression')
 if 'org.gradle.jvmargs=-Xmx4g' not in (root / 'gradle.properties').read_text():
     raise SystemExit('Gradle JVM heap must be configured to 4 GiB')

@@ -66,7 +66,7 @@ public final class MainActivity extends Activity {
     private static final int AMBER = Color.rgb(255, 190, 95);
     private static final String META_PREFIX = "__PAX_META__";
     private static final String GUEST_HOME = "/home/pax";
-    private static final String ROOTFS_ASSET = "debian-rootfs-arm64.tar.gz";
+    private static final String ROOTFS_ASSET = "debian-rootfs-arm64.rootfs";
     private static final int REQUEST_IMPORT_FILE = 501;
     private static final int REQUEST_EXPORT_FILE = 502;
     private static final int MAX_OUTPUT_CHARS = 120_000;

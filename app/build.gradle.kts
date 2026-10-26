@@ -28,7 +28,7 @@ android {
         // byte array and caused Gradle Zipflinger to exhaust its Java heap.
         // Store .gz assets as-is; AssetManager will still provide the gzip bytes
         // that the app streams into its private storage and extracts.
-        noCompress += "gz"
+        noCompress += "rootfs"
     }
 
     packaging {
