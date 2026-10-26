@@ -1,5 +1,12 @@
 # PAX Terminal changelog
 
+## v0.4.5
+
+- Hardened APK verification: record the APK entry list before checking required files, avoiding `unzip | grep -q` pipelines under `pipefail` that can fail on SIGPIPE.
+- Added explicit diagnostics for a missing/empty APK and missing runtime entries; the full entry list is printed when a required entry is absent.
+- Added a check for both packaged PRoot native libraries as well as the Debian root filesystem asset.
+- Bumped Android app version to v0.4.5 (versionCode 9).
+
 ## v0.4.4
 
 - Fixed the reported Gradle `OutOfMemoryError` while packaging the large Debian root filesystem asset: the `.tar.gz` asset is now stored without redundant APK-level compression.

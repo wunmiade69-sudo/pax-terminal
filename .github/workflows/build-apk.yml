@@ -165,15 +165,42 @@ jobs:
         run: |
           set -euo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$APK"
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libproot-userland.so'
-          unzip -l "$APK" | grep -q 'assets/debian-rootfs-arm64.tar.gz'
+          if [[ ! -s "$APK" ]]; then
+            echo "APK is missing or empty: $APK" >&2
+            echo "APK outputs found:" >&2
+            find app/build/outputs -maxdepth 6 -type f -print 2>/dev/null | sort >&2 || true
+            exit 1
+          fi
+
+          # Do not pipe unzip directly into grep -q while pipefail is enabled:
+          # grep can exit early and cause unzip to receive SIGPIPE. Save the
+          # complete archive entry list, then check exact paths in that file.
+          APK_ENTRIES="$RUNNER_TEMP/pax-terminal-apk-entries.txt"
+          unzip -Z1 "$APK" > "$APK_ENTRIES"
+          echo "Relevant bundled APK entries:"
+          grep -E '(^|/)(libproot-userland\.so|libproot-loader\.so|debian-rootfs-arm64\.tar\.gz)$' "$APK_ENTRIES" || true
+
+          required_entries=(
+            'lib/arm64-v8a/libproot-userland.so'
+            'lib/arm64-v8a/libproot-loader.so'
+            'assets/debian-rootfs-arm64.tar.gz'
+          )
+          for required in "${required_entries[@]}"; do
+            if ! grep -Fxq "$required" "$APK_ENTRIES"; then
+              echo "Required APK entry is missing: $required" >&2
+              echo "Full APK entry list follows:" >&2
+              cat "$APK_ENTRIES" >&2
+              exit 1
+            fi
+          done
+
           sha256sum "$APK" > "$APK.sha256"
+          echo "APK SHA-256: $(cut -d ' ' -f 1 "$APK.sha256")"
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v7
         with:
-          name: pax-terminal-v0.4.4-debug-apk
+          name: pax-terminal-v0.4.5-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256
