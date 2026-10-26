@@ -24,8 +24,11 @@ for token in required:
             raise SystemExit(f'Missing manifest permission: {token}')
     elif token not in main:
         raise SystemExit(f'Missing expected terminal implementation token: {token}')
-if 'versionName = "0.4.0"' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App version does not match v0.4.0')
+if 'versionName = "0.4.1"' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App version does not match v0.4.1')
+workflow = (root / '.github/workflows/build-apk.yml').read_text()
+if '2.4.3' not in workflow or 'Could not pin the talloc build dependency' not in workflow:
+    raise SystemExit('Missing talloc/Waf Python 3 compatibility fix')
 dockerfile = (root / 'runtime/Dockerfile.debian').read_text()
 for token in ('pnpm', 'typescript', 'tsx', 'deno', 'bun', 'python-is-python3'):
     if token not in dockerfile:

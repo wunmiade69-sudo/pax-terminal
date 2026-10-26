@@ -57,6 +57,24 @@ jobs:
           if [[ -z "$SDK_ROOT" ]]; then echo "Android SDK path was not set." >&2; exit 1; fi
           sed -i "s|^ARCHS=.*|ARCHS='aarch64'|" config
           sed -i "s|^NDK=.*|NDK=\"$SDK_ROOT/ndk/23.2.8568313\"|" config
+
+          # The upstream script pins talloc 2.1.14, whose bundled Waf uses
+          # Python 2 exception syntax and fails under the Python 3 runner.
+          # Use the newer talloc 2.4.3 build tooling instead.
+          if grep -qE '^[[:space:]]*TALLOC_V=' config; then
+            sed -i -E 's|^[[:space:]]*TALLOC_V=.*|TALLOC_V=2.4.3|' config
+          elif grep -qE '^[[:space:]]*TALLOC_VERSION=' config; then
+            sed -i -E 's|^[[:space:]]*TALLOC_VERSION=.*|TALLOC_VERSION=2.4.3|' config
+          else
+            # Compatibility fallback if the upstream config stores only the version literal.
+            sed -i 's/2\.1\.14/2.4.3/g' config
+          fi
+          if ! grep -q '2.4.3' config; then
+            echo 'Could not pin the talloc build dependency to 2.4.3.' >&2
+            exit 1
+          fi
+          echo 'Pinned talloc build dependency:'
+          grep -n '2.4.3' config
           test -x "$SDK_ROOT/ndk/23.2.8568313/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
           ./build.sh
           ./make-proot-for-apk.sh
@@ -122,7 +140,7 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v7
         with:
-          name: pax-terminal-v0.4.0-debug-apk
+          name: pax-terminal-v0.4.1-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256
