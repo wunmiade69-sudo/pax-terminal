@@ -1,14 +1,13 @@
 # Changelog
 
-## 0.2.0
+## v0.4.0
+- Expanded the bundled Debian ARM64 developer environment with Deno and Bun runtimes.
+- Added global pnpm, TypeScript compiler (`tsc`), and `tsx` for TypeScript scripts.
+- Added the `python` command alias and Android SDK/platform-tools packages to the base environment.
+- Expanded startup and help text with Node.js, npm, pnpm, Deno, Bun, TypeScript, Python, Git, and SDK commands.
+- Added build-time runtime version checks so failed or missing runtime installations fail the container build instead of producing a misleading artifact.
+- Updated the Android app version and APK artifact name to v0.4.0.
 
-- Added shell exit status display and restart handling.
-- Added Up/Down in-memory command history navigation and a `history` helper.
-- Added readable file browser, bounded text preview, file import, and file export flows.
-- Added output buffer cap, Android 15 edge-to-edge insets, and clearer status/help text.
-- Made Android SDK setup explicit in GitHub Actions and verified the expected APK path before upload.
-- Kept important limitations documented: Android shell only, no full Linux packages, no PTY, and no root access.
-
-## 0.1.0
-
-- Initial native Android shell UI and GitHub Actions build workflow.
+## v0.3.0
+- Introduced a Debian ARM64 userspace under PRoot with a Debian-backed `pkg` wrapper.
+- Added package install/update, project workspace, and background-process helpers.

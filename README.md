@@ -1,61 +1,68 @@
-# PAX Terminal
+# PAX Terminal v0.4.0
 
-**PAX Terminal v0.2.0** is a native Android terminal foundation with a custom dark interface and a persistent, real `/system/bin/sh` process. It is free to build and use for local shell commands; no AI service or API key is required.
+PAX Terminal is an Android terminal app that runs a Debian ARM64 userspace inside the app's private storage using PRoot. This release targets developer workflows on compatible 64-bit ARM Android devices.
 
-## What changed in v0.2.0
+## Included development tools
 
-- More polished PAX Terminal interface and live shell-status indicator.
-- Command history with Up/Down navigation when a hardware keyboard sends arrow keys.
-- Exit-code indicator after shell commands.
-- Output buffer limit to prevent very long sessions from growing the UI indefinitely.
-- Android 15 edge-to-edge insets so controls stay clear of system bars on recent devices.
-- Built-in `help`, `clear`, `history`, `files`, `pax-files`, `pax-about`, and `pax-version` helpers.
-- File browser for folders readable by the app, with selectable text previews.
-- Import an individual file into PAX Terminal's HOME folder using Android's document picker.
-- Export a top-level HOME file using Android's document picker.
-- Explicit Android SDK setup, APK verification, pull-request builds, and versioned artifact name in GitHub Actions.
+The build workflow creates a Debian root filesystem containing:
 
-## Current technical status
+- Node.js and npm
+- pnpm
+- TypeScript (`tsc`) and `tsx`
+- Deno
+- Bun
+- Python 3 (`python` and `python3`), pip and venv support
+- Git and OpenSSH client
+- Build essentials, Java build utilities, and Debian Android SDK/platform-tools packages where available
+- `pkg`, a convenience wrapper backed by Debian `apt-get`
 
-Implemented in the source:
-
-- Native Android Java app (no React Native, hosted backend, or AI API dependency).
-- `com.paxterminal.app` package ID, app-private `HOME`, persistent `/system/bin/sh`, and working-directory tracking.
-- Android Storage Access Framework import/export, without requesting broad all-files storage permission.
-- GitHub Actions debug APK build workflow.
-
-Not yet implemented or verified:
-
-- This is **not** a full Linux distribution or a Termux package environment. `pkg`/`apt`, Python, Git, SSH, compilers, and extra packages are not bundled.
-- It does not yet use a PTY/terminal emulator. Full-screen terminal programs, job control, terminal escape sequences, and interactive Ctrl+C are not guaranteed.
-- No root access. Commands run under this app's Android UID and remain subject to Android's sandbox and device policy.
-- The Android app has been source-updated, but this source ZIP is **not a compiled or device-tested APK**. The GitHub Actions workflow must pass before an installable artifact is available.
-
-## Try the shell after installing
-
-Start with these commands, one at a time:
+Examples:
 
 ```sh
-pwd
-echo PAX Terminal works
-mkdir demo
-cd demo
-echo hello from PAX > hello.txt
-cat hello.txt
+pkg update
+pkg install git nodejs npm python deno build-essential
+node --version
+npm install
+npm run dev
+pnpm install
+pnpm dev
+deno task dev
+deno test
+bun install
+bun run dev
+npx tsc --noEmit
+python -m venv .venv
+python -m unittest
+git status
 ```
 
-Open **FILES** to browse the current folder. Use **MORE → Go to HOME directory** to return to the app-private workspace, or **MORE → Import/Export** to transfer a single file using Android's document picker. Available system commands vary by Android device.
+Use each project's actual `package.json` scripts, `pnpm-workspace.yaml`, `deno.json`, or test configuration. Commands such as `npm run dev` only work when the current project defines a `dev` script. Framework servers can be started in the foreground; use `pax-bg NAME COMMAND ARGS...`, `pax-jobs`, `pax-logs NAME`, and `pax-stop NAME` for supported background commands.
 
-## Build the APK on GitHub
+## Package installation
 
-1. Push this source tree to the `main` branch of a GitHub repository.
-2. Open the repository's **Actions** tab and choose **Build PAX Terminal APK** if needed.
-3. Open the latest successful workflow run.
-4. Under **Artifacts**, download `pax-terminal-v0.2.0-debug-apk` and extract it to obtain `app-debug.apk`.
-5. Transfer the APK to your Android phone and install it. Android may ask the browser or file manager for permission to install unknown apps.
+`pkg update` updates Debian package indexes. `pkg install NAME` installs Debian package names through apt. It is a compatibility helper, not Termux's package repository, so package names and versions differ from Termux. Deno, Bun, pnpm, TypeScript, and `tsx` are installed during image construction and checked in the build workflow. Updating the root filesystem package set requires rebuilding the APK; apt can update or install additional packages inside the running environment when network access and free storage are available.
 
-The workflow uses GitHub-hosted runners and the Android SDK setup action. Public repositories are generally eligible for free standard GitHub-hosted runner usage under GitHub's current policies; check [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage) for the current rules. This is a **debug APK** intended for testing. A proper release/update path should use a private signing key saved in GitHub Actions secrets; never commit a keystore or its passwords to a public repository.
+## Android SDK note
+
+The base environment includes Debian's SDK/platform-tools packages when available. Android SDK platform/build-tools downloads, Gradle builds, emulator use, and native builds may require substantial extra storage and memory and are not guaranteed to work for every Android SDK package on-device. The app itself is built by the GitHub Actions workflow. `adb` access to the host phone is not automatically granted to an app running in Android's sandbox.
+
+## Build the APK
+
+1. Push this source tree to the `main` branch of your GitHub repository.
+2. Open **Actions** and select **Build PAX Terminal APK**.
+3. Wait for the workflow to complete successfully.
+4. Download `pax-terminal-v0.4.0-debug-apk` and extract `app-debug.apk`.
+5. Install the APK on a compatible ARM64 Android device.
+
+The workflow builds the PRoot runtime and Debian root filesystem on a GitHub-hosted runner, verifies the expected runtime commands, builds the Android app, and checks that the APK contains the Linux runtime assets. The source ZIP is not itself an APK. A successful workflow and on-device testing are still required before describing the build as verified.
+
+## Limits
+
+- Requires a 64-bit ARM Android device (arm64-v8a) for this build.
+- Commands run inside PRoot and Android's app sandbox. This does not grant Android root access.
+- This is a line-oriented terminal interface, not a full PTY emulator. Interactive full-screen programs, terminal escape handling, and job control may be limited.
+- Build tooling availability depends on Debian repositories, network access, architecture support, and device resources.
 
 ## License
 
-The PAX-specific source in this initial project is released under the MIT License. If third-party code is added later, follow its license and preserve all required notices.
+See `LICENSE` and `THIRD_PARTY_NOTICES.md`. Debian packages and bundled runtime components retain their respective licenses.
