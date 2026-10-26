@@ -10,8 +10,8 @@ android {
         applicationId = "com.paxterminal.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.4.3"
+        versionCode = 8
+        versionName = "0.4.4"
         ndk {
             abiFilters += "arm64-v8a"
         }
@@ -20,6 +20,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    androidResources {
+        // The Debian root filesystem is already a gzip-compressed tar archive.
+        // Recompressing it in the APK asset pipeline creates a large temporary
+        // byte array and caused Gradle Zipflinger to exhaust its Java heap.
+        // Store .gz assets as-is; AssetManager will still provide the gzip bytes
+        // that the app streams into its private storage and extracts.
+        noCompress += "gz"
     }
 
     packaging {

@@ -1,5 +1,5 @@
-# v0.4.3 validation status
+# v0.4.4 source validation status
 
-This update fixes the latest reported workflow failure. The native PRoot compile reached the end, but the workflow tried to copy the libraries from a path that the upstream script does not create. The upstream config defines `INSTALL_ROOT="$BUILD_DIR/root-$ARCH/root"`, and `make-proot-for-apk.sh` uses `PREFIX="$INSTALL_ROOT-apk"`, so for ARM64 the output directory is `build/root-aarch64/root-apk/bin`. The workflow now copies from that path and prints generated files if the expected binaries are missing.
+This release addresses the reported Gradle `java.lang.OutOfMemoryError: Java heap space` in `CompressAssetsWorkAction` / Zipflinger. The Debian filesystem is already a `.tar.gz` archive, so the Android Gradle configuration now puts the `gz` extension in `androidResources.noCompress` to avoid recompressing the large archive inside the APK. Gradle heap is set to 4 GiB, parallel mode is disabled, and the worker count is capped at two in CI.
 
-The local source validation checks source/configuration consistency and XML parsing. It does not run the complete Android NDK, Docker rootfs, or Gradle APK build. A successful GitHub Actions run and on-device test are still required before the APK can be called verified.
+Source validation checks terminal implementation markers, Android manifest/resource XML, app version, native PRoot build fixes, no-compress configuration, Gradle memory settings, and workflow/artifact consistency. These checks do not execute the complete Android NDK/Docker rootfs/Gradle APK build. A successful GitHub Actions run and on-device test are still required before the APK can be called verified.

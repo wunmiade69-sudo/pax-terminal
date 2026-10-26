@@ -24,10 +24,16 @@ for token in required:
             raise SystemExit(f'Missing manifest permission: {token}')
     elif token not in main:
         raise SystemExit(f'Missing expected terminal implementation token: {token}')
-if 'versionName = "0.4.3"' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App version does not match v0.4.3')
-if 'versionCode = 7' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App versionCode must be 7 for v0.4.3')
+if 'versionName = "0.4.4"' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App version does not match v0.4.4')
+if 'versionCode = 8' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App versionCode must be 8 for v0.4.4')
+if 'noCompress += "gz"' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('The compressed rootfs asset must bypass APK-level recompression')
+if 'org.gradle.jvmargs=-Xmx4g' not in (root / 'gradle.properties').read_text():
+    raise SystemExit('Gradle JVM heap must be configured to 4 GiB')
+if 'org.gradle.parallel=false' not in (root / 'gradle.properties').read_text() or 'org.gradle.workers.max=2' not in (root / 'gradle.properties').read_text():
+    raise SystemExit('Gradle concurrency limits are missing')
 workflow = (root / '.github/workflows/build-apk.yml').read_text()
 if '2.4.3' not in workflow or 'Could not pin the talloc build dependency' not in workflow:
     raise SystemExit('Missing talloc/Waf Python 3 compatibility fix')
@@ -39,6 +45,8 @@ if 'PROOT_BIN_DIR="build/root-aarch64/root-apk/bin"' not in workflow:
     raise SystemExit('Missing corrected PRoot APK output directory')
 if 'cp build/root-aarch64-apk/root/bin/' in workflow:
     raise SystemExit('Workflow still copies from the incorrect PRoot APK output directory')
+if '--max-workers=2' not in workflow or 'pax-terminal-v0.4.4-debug-apk' not in workflow:
+    raise SystemExit('Workflow memory limits or v0.4.4 artifact name are missing')
 dockerfile = (root / 'runtime/Dockerfile.debian').read_text()
 for token in ('pnpm', 'typescript', 'tsx', 'deno', 'bun', 'python-is-python3'):
     if token not in dockerfile:

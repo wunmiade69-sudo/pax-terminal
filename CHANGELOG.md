@@ -1,5 +1,13 @@
 # PAX Terminal changelog
 
+## v0.4.4
+
+- Fixed the reported Gradle `OutOfMemoryError` while packaging the large Debian root filesystem asset: the `.tar.gz` asset is now stored without redundant APK-level compression.
+- Raised the Gradle JVM heap to 4 GiB and capped Gradle concurrency at two workers to reduce peak memory pressure on the hosted build runner.
+- Added build-workflow checks for these settings and updated the APK artifact name.
+- Bumped the Android app version to v0.4.4 (versionCode 8).
+
+
 ## v0.4.3
 
 - Fixed the PRoot binary staging path after native compilation. The upstream `make-proot-for-apk.sh` script installs to `build/root-aarch64/root-apk/bin`; the previous workflow copied from a non-existent `build/root-aarch64-apk/root/bin` directory.

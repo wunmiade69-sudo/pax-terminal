@@ -148,8 +148,17 @@ jobs:
       - name: Validate project source
         run: bash scripts/validate-source.sh
 
+      - name: Check large asset packaging and Gradle memory settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'noCompress += "gz"' app/build.gradle.kts
+          grep -Fq 'org.gradle.jvmargs=-Xmx4g' gradle.properties
+          grep -Fq 'org.gradle.parallel=false' gradle.properties
+          echo 'gzip assets will be stored without recompression; Gradle workers are bounded.'
+
       - name: Build debug APK
-        run: gradle --no-daemon --stacktrace clean assembleDebug
+        run: gradle --no-daemon --max-workers=2 --stacktrace clean assembleDebug
 
       - name: Verify APK and bundled runtime
         shell: bash
@@ -164,7 +173,7 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v7
         with:
-          name: pax-terminal-v0.4.3-debug-apk
+          name: pax-terminal-v0.4.4-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256
