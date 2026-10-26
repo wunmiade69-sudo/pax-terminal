@@ -24,8 +24,10 @@ for token in required:
             raise SystemExit(f'Missing manifest permission: {token}')
     elif token not in main:
         raise SystemExit(f'Missing expected terminal implementation token: {token}')
-if 'versionName = "0.4.2"' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App version does not match v0.4.2')
+if 'versionName = "0.4.3"' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App version does not match v0.4.3')
+if 'versionCode = 7' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App versionCode must be 7 for v0.4.3')
 workflow = (root / '.github/workflows/build-apk.yml').read_text()
 if '2.4.3' not in workflow or 'Could not pin the talloc build dependency' not in workflow:
     raise SystemExit('Missing talloc/Waf Python 3 compatibility fix')
@@ -33,6 +35,10 @@ if "sed -i 's/else API=21/else API=26/' config" not in workflow:
     raise SystemExit('Missing native API 26 fix for telldir/seekdir')
 if 'Could not set the PRoot native build API to 26' not in workflow:
     raise SystemExit('Missing native API baseline guard')
+if 'PROOT_BIN_DIR="build/root-aarch64/root-apk/bin"' not in workflow:
+    raise SystemExit('Missing corrected PRoot APK output directory')
+if 'cp build/root-aarch64-apk/root/bin/' in workflow:
+    raise SystemExit('Workflow still copies from the incorrect PRoot APK output directory')
 dockerfile = (root / 'runtime/Dockerfile.debian').read_text()
 for token in ('pnpm', 'typescript', 'tsx', 'deno', 'bun', 'python-is-python3'):
     if token not in dockerfile:

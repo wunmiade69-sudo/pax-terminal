@@ -1,5 +1,5 @@
-# v0.4.2 validation status
+# v0.4.3 validation status
 
-This update addresses the latest reported native build failure. The talloc `replace_testsuite` target was compiling against Android API 21, but Android Bionic exposes `telldir()` and `seekdir()` starting at API 23. The PAX Terminal app's minimum Android API is 26, so the workflow now sets the PRoot/talloc native build baseline to API 26 and verifies the change before building.
+This update fixes the latest reported workflow failure. The native PRoot compile reached the end, but the workflow tried to copy the libraries from a path that the upstream script does not create. The upstream config defines `INSTALL_ROOT="$BUILD_DIR/root-$ARCH/root"`, and `make-proot-for-apk.sh` uses `PREFIX="$INSTALL_ROOT-apk"`, so for ARM64 the output directory is `build/root-aarch64/root-apk/bin`. The workflow now copies from that path and prints generated files if the expected binaries are missing.
 
-Local source validation checks XML resources, terminal command references, runtime setup, the app version, the talloc dependency pin, and the native API setting. The full native/Android build and device runtime still require a successful GitHub Actions run and a physical-device test. This source package has not itself produced a verified APK.
+The local source validation checks source/configuration consistency and XML parsing. It does not run the complete Android NDK, Docker rootfs, or Gradle APK build. A successful GitHub Actions run and on-device test are still required before the APK can be called verified.

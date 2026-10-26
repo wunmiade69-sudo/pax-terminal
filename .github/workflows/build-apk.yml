@@ -91,10 +91,21 @@ jobs:
           test -x "$SDK_ROOT/ndk/23.2.8568313/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
           ./build.sh
           ./make-proot-for-apk.sh
+          # make-proot-for-apk.sh sets PREFIX="$INSTALL_ROOT-apk".
+          # In upstream config INSTALL_ROOT="$BUILD_DIR/root-$ARCH/root", so
+          # the real output directory is build/root-aarch64/root-apk/bin.
+          # The previous workflow used the wrong staging path.
+          PROOT_BIN_DIR="build/root-aarch64/root-apk/bin"
+          if [[ ! -s "$PROOT_BIN_DIR/libproot-userland.so" || ! -s "$PROOT_BIN_DIR/libproot-loader.so" ]]; then
+            echo "Expected PRoot APK binaries were not found in $PROOT_BIN_DIR." >&2
+            echo "Generated files under build/root-aarch64:" >&2
+            find build/root-aarch64 -maxdepth 6 -type f -print | sort >&2 || true
+            exit 1
+          fi
           DEST="$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a"
           mkdir -p "$DEST"
-          cp build/root-aarch64-apk/root/bin/libproot-userland.so "$DEST/"
-          cp build/root-aarch64-apk/root/bin/libproot-loader.so "$DEST/"
+          cp "$PROOT_BIN_DIR/libproot-userland.so" "$DEST/"
+          cp "$PROOT_BIN_DIR/libproot-loader.so" "$DEST/"
           chmod 755 "$DEST"/*.so
           test -s "$DEST/libproot-userland.so"
           test -s "$DEST/libproot-loader.so"
@@ -153,7 +164,7 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v7
         with:
-          name: pax-terminal-v0.4.2-debug-apk
+          name: pax-terminal-v0.4.3-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256
