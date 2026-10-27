@@ -1,4 +1,4 @@
-# PAX Terminal v0.4.7
+# PAX Terminal v0.4.8
 
 PAX Terminal is an Android terminal app that runs a Debian ARM64 userspace inside the app's private storage using PRoot. This release targets developer workflows on compatible 64-bit ARM Android devices.
 
@@ -55,7 +55,7 @@ The base environment includes Debian's SDK/platform-tools packages when availabl
 1. Push this source tree to the `main` branch of your GitHub repository.
 2. Open **Actions** and select **Build PAX Terminal APK**.
 3. Wait for the workflow to complete successfully.
-4. Download `pax-terminal-v0.4.7-debug-apk` and extract `app-debug.apk`.
+4. Download `pax-terminal-v0.4.8-debug-apk` and extract `app-debug.apk`.
 5. Install the APK on a compatible ARM64 Android device.
 
 The workflow builds the PRoot runtime and Debian root filesystem on a GitHub-hosted runner, verifies the expected runtime commands, builds the Android app, and checks that the APK contains the Linux runtime assets. The source ZIP is not itself an APK. A successful workflow and on-device testing are still required before describing the build as verified.

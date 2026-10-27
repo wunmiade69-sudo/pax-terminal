@@ -13,6 +13,7 @@ for p in (root / 'app/src/main/res').rglob('*.xml'):
     ET.parse(p)
 main = (root / 'app/src/main/java/com/paxterminal/app/MainActivity.java').read_text()
 required = [
+    'PROOT_TMP_DIR',
     'ROOTFS_ASSET', 'bootstrapLinuxEnvironment', 'pkgWrapperScript',
     'libproot-userland.so', 'npm run dev', 'pnpm dev', 'deno task dev', 'bun run dev', 'npx tsc --noEmit', 'pax-bg', 'pax-jobs', 'pax-logs', 'pax-stop',
     'ACCESS_NETWORK_STATE',
@@ -24,10 +25,10 @@ for token in required:
             raise SystemExit(f'Missing manifest permission: {token}')
     elif token not in main:
         raise SystemExit(f'Missing expected terminal implementation token: {token}')
-if 'versionName = "0.4.7"' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App version does not match v0.4.5')
-if 'versionCode = 11' not in (root / 'app/build.gradle.kts').read_text():
-    raise SystemExit('App versionCode must be 9 for v0.4.5')
+if 'versionName = "0.4.8"' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App version does not match v0.4.8')
+if 'versionCode = 12' not in (root / 'app/build.gradle.kts').read_text():
+    raise SystemExit('App versionCode must be 12 for v0.4.8')
 if 'noCompress += "rootfs"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('The compressed rootfs asset must bypass APK-level recompression')
 if 'org.gradle.jvmargs=-Xmx4g' not in (root / 'gradle.properties').read_text():
@@ -45,8 +46,8 @@ if 'PROOT_BIN_DIR="build/root-aarch64/root-apk/bin"' not in workflow:
     raise SystemExit('Missing corrected PRoot APK output directory')
 if 'cp build/root-aarch64-apk/root/bin/' in workflow:
     raise SystemExit('Workflow still copies from the incorrect PRoot APK output directory')
-if '--max-workers=2' not in workflow or 'pax-terminal-v0.4.7-debug-apk' not in workflow:
-    raise SystemExit('Workflow memory limits or v0.4.5 artifact name are missing')
+if '--max-workers=2' not in workflow or 'pax-terminal-v0.4.8-debug-apk' not in workflow:
+    raise SystemExit('Workflow memory limits or v0.4.8 artifact name are missing')
 dockerfile = (root / 'runtime/Dockerfile.debian').read_text()
 for token in ('bash', 'ca-certificates', 'curl', 'git'):
     if token not in dockerfile:
