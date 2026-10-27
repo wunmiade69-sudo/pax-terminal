@@ -10,8 +10,8 @@ android {
         applicationId = "com.paxterminal.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.4.5"
+        versionCode = 10
+        versionName = "0.4.6"
         ndk {
             abiFilters += "arm64-v8a"
         }

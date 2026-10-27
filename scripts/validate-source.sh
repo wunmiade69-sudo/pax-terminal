@@ -24,9 +24,9 @@ for token in required:
             raise SystemExit(f'Missing manifest permission: {token}')
     elif token not in main:
         raise SystemExit(f'Missing expected terminal implementation token: {token}')
-if 'versionName = "0.4.5"' not in (root / 'app/build.gradle.kts').read_text():
+if 'versionName = "0.4.6"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('App version does not match v0.4.5')
-if 'versionCode = 9' not in (root / 'app/build.gradle.kts').read_text():
+if 'versionCode = 10' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('App versionCode must be 9 for v0.4.5')
 if 'noCompress += "rootfs"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('The compressed rootfs asset must bypass APK-level recompression')
@@ -45,12 +45,16 @@ if 'PROOT_BIN_DIR="build/root-aarch64/root-apk/bin"' not in workflow:
     raise SystemExit('Missing corrected PRoot APK output directory')
 if 'cp build/root-aarch64-apk/root/bin/' in workflow:
     raise SystemExit('Workflow still copies from the incorrect PRoot APK output directory')
-if '--max-workers=2' not in workflow or 'pax-terminal-v0.4.5-debug-apk' not in workflow:
+if '--max-workers=2' not in workflow or 'pax-terminal-v0.4.6-debug-apk' not in workflow:
     raise SystemExit('Workflow memory limits or v0.4.5 artifact name are missing')
 dockerfile = (root / 'runtime/Dockerfile.debian').read_text()
-for token in ('pnpm', 'typescript', 'tsx', 'deno', 'bun', 'python-is-python3'):
+for token in ('bash', 'ca-certificates', 'curl', 'git'):
     if token not in dockerfile:
-        raise SystemExit(f'Missing runtime package or setup: {token}')
+        raise SystemExit(f'Missing base runtime package: {token}')
+for token in ('android-sdk', 'build-essential', 'nodejs',
+              'python3-dev', 'deno.land/install.sh', 'bun.sh/install'):
+    if token in dockerfile:
+        raise SystemExit(f'Optional development tool is still bundled: {token}')
 print('Source validation passed: manifest/resources, terminal commands, runtime setup, version.')
 PY
 
