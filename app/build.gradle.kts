@@ -26,9 +26,9 @@ android {
         // The Debian root filesystem is already a gzip-compressed tar archive.
         // Recompressing it in the APK asset pipeline creates a large temporary
         // byte array and caused Gradle Zipflinger to exhaust its Java heap.
-        // Store .gz assets as-is; AssetManager will still provide the gzip bytes
+        // Store .gzip assets as-is; AssetManager will still provide the gzip bytes
         // that the app streams into its private storage and extracts.
-        noCompress += "gz"
+        noCompress += "gzip"
     }
 
     packaging {

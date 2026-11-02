@@ -134,13 +134,13 @@ jobs:
           trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
           mkdir -p app/src/main/assets
           rm -f app/src/main/assets/debian-rootfs-arm64.tar
-          rm -f app/src/main/assets/debian-rootfs-arm64.tar.gz
-          docker export "$container_id" | gzip -1 > app/src/main/assets/debian-rootfs-arm64.tar.gz
-          test -s app/src/main/assets/debian-rootfs-arm64.tar.gz
+          rm -f app/src/main/assets/debian-rootfs-arm64.tar.gzip
+          docker export "$container_id" | gzip -1 > app/src/main/assets/debian-rootfs-arm64.tar.gzip
+          test -s app/src/main/assets/debian-rootfs-arm64.tar.gzip
           test ! -e app/src/main/assets/debian-rootfs-arm64.tar
-          gzip -t app/src/main/assets/debian-rootfs-arm64.tar.gz
-          tar -tzf app/src/main/assets/debian-rootfs-arm64.tar.gz >/dev/null
-          ls -lh app/src/main/assets/debian-rootfs-arm64.tar.gz
+          gzip -t app/src/main/assets/debian-rootfs-arm64.tar.gzip
+          tar -tzf app/src/main/assets/debian-rootfs-arm64.tar.gzip >/dev/null
+          ls -lh app/src/main/assets/debian-rootfs-arm64.tar.gzip
           docker rm "$container_id"
           trap - EXIT
 
@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'noCompress += "gz"' app/build.gradle.kts
+          grep -Fq 'noCompress += "gzip"' app/build.gradle.kts
           grep -Fq 'org.gradle.jvmargs=-Xmx4g' gradle.properties
           grep -Fq 'org.gradle.parallel=false' gradle.properties
           echo 'gzip assets will be stored without recompression; Gradle workers are bounded.'
@@ -183,12 +183,12 @@ jobs:
           APK_ENTRIES="$RUNNER_TEMP/pax-terminal-apk-entries.txt"
           unzip -Z1 "$APK" > "$APK_ENTRIES"
           echo "Relevant bundled APK entries:"
-          grep -E '(^|/)(libproot-userland\.so|libproot-loader\.so|debian-rootfs-arm64\.tar\.gz)$' "$APK_ENTRIES" || true
+          grep -E '(^|/)(libproot-userland\.so|libproot-loader\.so|debian-rootfs-arm64\.tar\.gzip)$' "$APK_ENTRIES" || true
 
           required_entries=(
             'lib/arm64-v8a/libproot-userland.so'
             'lib/arm64-v8a/libproot-loader.so'
-            'assets/debian-rootfs-arm64.tar.gz'
+            'assets/debian-rootfs-arm64.tar.gzip'
           )
           for required in "${required_entries[@]}"; do
             if ! grep -Fxq "$required" "$APK_ENTRIES"; then

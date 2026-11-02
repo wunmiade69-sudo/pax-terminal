@@ -30,13 +30,17 @@ if 'versionName = "0.4.5"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('App version does not match v0.4.5')
 if 'versionCode = 9' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('App versionCode must be 9 for v0.4.5')
-if 'noCompress += "gz"' not in (root / 'app/build.gradle.kts').read_text():
+if 'noCompress += "gzip"' not in (root / 'app/build.gradle.kts').read_text():
     raise SystemExit('The compressed rootfs asset must bypass APK-level recompression')
 if 'org.gradle.jvmargs=-Xmx4g' not in (root / 'gradle.properties').read_text():
     raise SystemExit('Gradle JVM heap must be configured to 4 GiB')
 if 'org.gradle.parallel=false' not in (root / 'gradle.properties').read_text() or 'org.gradle.workers.max=2' not in (root / 'gradle.properties').read_text():
     raise SystemExit('Gradle concurrency limits are missing')
 workflow = (root / '.github/workflows/build-apk.yml').read_text()
+if 'ROOTFS_ASSET = "debian-rootfs-arm64.tar.gzip"' not in main:
+    raise SystemExit('Android app rootfs asset filename is incorrect')
+if 'assets/debian-rootfs-arm64.tar.gzip' not in workflow:
+    raise SystemExit('Workflow APK asset verification filename is incorrect')
 if '2.4.3' not in workflow or 'Could not pin the talloc build dependency' not in workflow:
     raise SystemExit('Missing talloc/Waf Python 3 compatibility fix')
 if "sed -i 's/else API=21/else API=26/' config" not in workflow:

@@ -6,7 +6,7 @@ The native build workflow pins talloc 2.4.3 to avoid the Python 2-only Waf synta
 
 ## Included development tools
 
-The Gradle APK configuration stores the already-compressed `.tar.gz` root filesystem without recompressing it. This avoids Zipflinger loading the large filesystem archive into a temporary compression byte array, which previously exhausted the Gradle heap. Gradle uses a 4 GiB heap and at most two workers on the hosted runner.
+The Gradle APK configuration stores the already-compressed `.tar.gzip` root filesystem without recompressing it. This avoids Zipflinger loading the large filesystem archive into a temporary compression byte array, which previously exhausted the Gradle heap. Gradle uses a 4 GiB heap and at most two workers on the hosted runner.
 
 The build workflow creates a Debian root filesystem containing:
 
