@@ -133,7 +133,11 @@ jobs:
           container_id="$(docker create --platform linux/arm64 pax-terminal-rootfs:trixie)"
           trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
           mkdir -p app/src/main/assets
+          rm -f app/src/main/assets/debian-rootfs-arm64.tar
+          rm -f app/src/main/assets/debian-rootfs-arm64.tar.gz
           docker export "$container_id" | gzip -1 > app/src/main/assets/debian-rootfs-arm64.tar.gz
+          test -s app/src/main/assets/debian-rootfs-arm64.tar.gz
+          test ! -e app/src/main/assets/debian-rootfs-arm64.tar
           gzip -t app/src/main/assets/debian-rootfs-arm64.tar.gz
           tar -tzf app/src/main/assets/debian-rootfs-arm64.tar.gz >/dev/null
           ls -lh app/src/main/assets/debian-rootfs-arm64.tar.gz
