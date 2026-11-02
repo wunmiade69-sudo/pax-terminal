@@ -10,8 +10,8 @@ android {
         applicationId = "com.paxterminal.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.4.8"
+        versionCode = 9
+        versionName = "0.4.5"
         ndk {
             abiFilters += "arm64-v8a"
         }
@@ -28,7 +28,7 @@ android {
         // byte array and caused Gradle Zipflinger to exhaust its Java heap.
         // Store .gz assets as-is; AssetManager will still provide the gzip bytes
         // that the app streams into its private storage and extracts.
-        noCompress += "rootfs"
+        noCompress += "gz"
     }
 
     packaging {

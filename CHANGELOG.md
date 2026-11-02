@@ -2,6 +2,17 @@
 
 ## v0.4.5
 
+- Added a checked-in Gradle 8.9 wrapper and switched CI to build through `./gradlew`.
+- Pinned pnpm, TypeScript, tsx, Deno, and Bun versions in the Debian runtime Dockerfile.
+- Extended source validation to require the wrapper, pinned runtime versions, and workspace symlink protections.
+- Hardened file preview/export/import flows against symlink escapes and dangling symlink destinations.
+- Added a util-linux `script` PTY layer for the Debian shell, improving readline, SSH, password prompts, and interactive tools.
+- Added interruption-aware previews and a 512 MiB limit for import/export transfers.
+- Added local Gradle-wrapper build instructions.
+- Refreshed the Android UI with a consistent dark theme, Android 15-safe system-bar insets, larger touch targets, and clearer shell-state feedback.
+- Added accessibility labels and announcements for terminal output, shell status, quick actions, command input, and the Run control.
+- Reworked visible copy to use short, plain-language labels and consistent title case.
+- Simplified Help, Tools, About, and Files screens so common actions are easier to find.
 - Hardened APK verification: record the APK entry list before checking required files, avoiding `unzip | grep -q` pipelines under `pipefail` that can fail on SIGPIPE.
 - Added explicit diagnostics for a missing/empty APK and missing runtime entries; the full entry list is printed when a required entry is absent.
 - Added a check for both packaged PRoot native libraries as well as the Debian root filesystem asset.

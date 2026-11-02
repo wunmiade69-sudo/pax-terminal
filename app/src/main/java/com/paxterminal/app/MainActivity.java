@@ -19,6 +19,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -53,7 +54,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * PAX Terminal 0.4.8. Runs a Debian ARM64 userspace under PRoot.
+ * PAX Terminal 0.4.5. Runs a Debian ARM64 userspace under PRoot.
  * The environment remains inside this Android app's private sandbox.
  */
 public final class MainActivity extends Activity {
@@ -66,16 +67,18 @@ public final class MainActivity extends Activity {
     private static final int AMBER = Color.rgb(255, 190, 95);
     private static final String META_PREFIX = "__PAX_META__";
     private static final String GUEST_HOME = "/home/pax";
-    private static final String ROOTFS_ASSET = "debian-rootfs-arm64.rootfs";
+    private static final String ROOTFS_ASSET = "debian-rootfs-arm64.tar.gz";
     private static final int REQUEST_IMPORT_FILE = 501;
     private static final int REQUEST_EXPORT_FILE = 502;
     private static final int MAX_OUTPUT_CHARS = 120_000;
     private static final int MAX_PREVIEW_CHARS = 16_000;
     private static final int MAX_HISTORY = 100;
+    private static final long MAX_FILE_TRANSFER_BYTES = 512L * 1024L * 1024L;
 
     private LinearLayout root;
     private TextView terminalOutput;
     private TextView shellStatusBadge;
+    private Button runButton;
     private ScrollView outputScroll;
     private EditText commandInput;
     private BufferedWriter shellWriter;
@@ -112,11 +115,23 @@ public final class MainActivity extends Activity {
         root.setPadding(dp(12), dp(8), dp(12), dp(8));
         if (Build.VERSION.SDK_INT >= 35) {
             root.setOnApplyWindowInsetsListener((view, insets) -> {
-                view.setPadding(
-                        dp(12) + insets.getSystemWindowInsetLeft(),
-                        dp(8) + insets.getSystemWindowInsetTop(),
-                        dp(12) + insets.getSystemWindowInsetRight(),
-                        dp(8) + insets.getSystemWindowInsetBottom());
+                int left = 0;
+                int top = 0;
+                int right = 0;
+                int bottom = 0;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets systemBars = insets.getInsets(WindowInsets.Type.systemBars());
+                    left = systemBars.left;
+                    top = systemBars.top;
+                    right = systemBars.right;
+                    bottom = systemBars.bottom;
+                } else {
+                    left = insets.getSystemWindowInsetLeft();
+                    top = insets.getSystemWindowInsetTop();
+                    right = insets.getSystemWindowInsetRight();
+                    bottom = insets.getSystemWindowInsetBottom();
+                }
+                view.setPadding(dp(12) + left, dp(8) + top, dp(12) + right, dp(8) + bottom);
                 return insets;
             });
         }
@@ -130,11 +145,12 @@ public final class MainActivity extends Activity {
         brandStack.setOrientation(LinearLayout.VERTICAL);
         TextView brand = new TextView(this);
         brand.setText("PAX TERMINAL");
+        brand.setContentDescription("PAX Terminal");
         brand.setTextColor(GREEN);
         brand.setTextSize(20);
         brand.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
         TextView subtitle = new TextView(this);
-        subtitle.setText("DEBIAN ARM64 DEV WORKSPACE  /  v0.4.8");
+        subtitle.setText("Debian ARM64  ·  v0.4.5");
         subtitle.setTextColor(MUTED);
         subtitle.setTextSize(9);
         subtitle.setLetterSpacing(0.07f);
@@ -143,11 +159,16 @@ public final class MainActivity extends Activity {
         header.addView(brandStack, new LinearLayout.LayoutParams(0, -2, 1f));
 
         shellStatusBadge = new TextView(this);
-        shellStatusBadge.setText("STARTING SHELL");
+        shellStatusBadge.setText("Starting");
         shellStatusBadge.setTextColor(GREEN);
         shellStatusBadge.setTextSize(9);
         shellStatusBadge.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         shellStatusBadge.setPadding(dp(9), dp(8), dp(9), dp(8));
+        shellStatusBadge.setMinHeight(dp(44));
+        shellStatusBadge.setGravity(Gravity.CENTER);
+        shellStatusBadge.setFocusable(true);
+        shellStatusBadge.setClickable(true);
+        shellStatusBadge.setContentDescription("Shell status. Tap for terminal tools.");
         shellStatusBadge.setBackground(roundRect(PANEL_2, dp(10)));
         shellStatusBadge.setOnClickListener(v -> showMoreMenu());
         header.addView(shellStatusBadge);
@@ -170,6 +191,8 @@ public final class MainActivity extends Activity {
         terminalOutput.setLineSpacing(dp(2), 1.0f);
         terminalOutput.setPadding(dp(8), dp(4), dp(8), dp(12));
         terminalOutput.setTextIsSelectable(true);
+        terminalOutput.setContentDescription("Terminal output. Long press to select and copy text.");
+        terminalOutput.setFocusable(true);
         outputScroll.addView(terminalOutput, new ScrollView.LayoutParams(-1, -2));
         LinearLayout.LayoutParams outputParams = new LinearLayout.LayoutParams(-1, 0, 1f);
         outputParams.topMargin = dp(9);
@@ -179,10 +202,10 @@ public final class MainActivity extends Activity {
         LinearLayout quickActions = new LinearLayout(this);
         quickActions.setOrientation(LinearLayout.HORIZONTAL);
         quickActions.setGravity(Gravity.CENTER_VERTICAL);
-        quickActions.addView(makeActionButton("HELP", v -> { showHelp(); showPrompt(); }), weightButton());
-        quickActions.addView(makeActionButton("CLEAR", v -> { clearTerminal(); showPrompt(); }), spacedWeight());
-        quickActions.addView(makeActionButton("FILES", v -> showFileBrowser()), spacedWeight());
-        quickActions.addView(makeActionButton("MORE", v -> showMoreMenu()), spacedWeight());
+        quickActions.addView(makeActionButton("Help", "Show terminal help", v -> { showHelp(); showPrompt(); }), weightButton());
+        quickActions.addView(makeActionButton("Clear", "Clear terminal output", v -> { clearTerminal(); showPrompt(); }), spacedWeight());
+        quickActions.addView(makeActionButton("Files", "Browse workspace files", v -> showFileBrowser()), spacedWeight());
+        quickActions.addView(makeActionButton("Tools", "Open terminal tools", v -> showMoreMenu()), spacedWeight());
         root.addView(quickActions);
 
         LinearLayout inputRow = new LinearLayout(this);
@@ -195,13 +218,15 @@ public final class MainActivity extends Activity {
         commandInput.setSingleLine(true);
         commandInput.setTextColor(TEXT);
         commandInput.setHintTextColor(MUTED);
-        commandInput.setHint("Enter a shell command…");
+        commandInput.setHint("Type a command");
+        commandInput.setContentDescription("Shell command input");
         commandInput.setTextSize(13);
         commandInput.setTypeface(Typeface.MONOSPACE);
         commandInput.setPadding(dp(8), dp(8), dp(8), dp(8));
         commandInput.setBackgroundColor(Color.TRANSPARENT);
         commandInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         commandInput.setImeOptions(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+        commandInput.setSelectAllOnFocus(false);
         commandInput.setOnEditorActionListener((view, actionId, event) -> {
             boolean enter = event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN;
             if (actionId == EditorInfo.IME_ACTION_SEND || actionId == EditorInfo.IME_ACTION_DONE || enter) {
@@ -224,23 +249,25 @@ public final class MainActivity extends Activity {
         });
         inputRow.addView(commandInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
-        Button run = new Button(this);
-        run.setText("RUN  ›");
-        run.setTextColor(BG);
-        run.setTextSize(12);
-        run.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        run.setAllCaps(false);
-        run.setBackground(roundRect(GREEN, dp(10)));
-        run.setPadding(dp(12), 0, dp(12), 0);
-        run.setMinWidth(dp(68));
-        run.setOnClickListener(v -> submitCommand());
-        inputRow.addView(run, new LinearLayout.LayoutParams(-2, dp(42)));
+        runButton = new Button(this);
+        runButton.setText("Run");
+        runButton.setTextColor(BG);
+        runButton.setTextSize(12);
+        runButton.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        runButton.setAllCaps(false);
+        runButton.setContentDescription("Run shell command");
+        runButton.setBackground(roundRect(GREEN, dp(10)));
+        runButton.setPadding(dp(12), 0, dp(12), 0);
+        runButton.setMinWidth(dp(76));
+        runButton.setMinHeight(dp(48));
+        runButton.setOnClickListener(v -> submitCommand());
+        inputRow.addView(runButton, new LinearLayout.LayoutParams(-2, dp(48)));
         LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-1, -2);
         inputParams.topMargin = dp(8);
         root.addView(inputRow, inputParams);
 
         TextView footer = new TextView(this);
-        footer.setText("DEBIAN ARM64  •  PACKAGES ON DEMAND  •  ROOTLESS LINUX");
+        footer.setText("Debian ARM64  ·  Node  ·  Python  ·  Git");
         footer.setTextColor(MUTED);
         footer.setTextSize(8);
         footer.setGravity(Gravity.CENTER);
@@ -251,7 +278,7 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams weightButton() {
-        return new LinearLayout.LayoutParams(0, dp(38), 1f);
+        return new LinearLayout.LayoutParams(0, dp(48), 1f);
     }
 
     private LinearLayout.LayoutParams spacedWeight() {
@@ -260,14 +287,18 @@ public final class MainActivity extends Activity {
         return p;
     }
 
-    private Button makeActionButton(String label, View.OnClickListener listener) {
+    private Button makeActionButton(String label, String description, View.OnClickListener listener) {
         Button button = new Button(this);
         button.setText(label);
+        button.setContentDescription(description);
         button.setTextColor(GREEN);
-        button.setTextSize(10);
+        button.setTextSize(11);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setAllCaps(false);
         button.setPadding(dp(4), 0, dp(4), 0);
+        button.setMinHeight(dp(48));
+        button.setMinWidth(dp(48));
+        button.setGravity(Gravity.CENTER);
         button.setBackground(roundRect(PANEL_2, dp(9)));
         button.setOnClickListener(listener);
         return button;
@@ -289,31 +320,31 @@ public final class MainActivity extends Activity {
             if ("arm64-v8a".equals(abi)) { arm64 = true; break; }
         }
         if (!arm64) {
-            appendOutput("PAX Terminal v0.4.8 currently requires a 64-bit ARM Android device (arm64-v8a).\n");
-            updateShellBadge("UNSUPPORTED DEVICE", AMBER);
+            appendOutput("This device is not supported. PAX Terminal requires a 64-bit ARM device.\n");
+            updateShellBadge("Not supported", AMBER);
             return;
         }
 
         homeDirectory = new File(getFilesDir(), "home");
         rootFsDirectory = new File(getFilesDir(), "debian-rootfs");
         if (!homeDirectory.exists() && !homeDirectory.mkdirs()) {
-            appendOutput("Could not create the PAX workspace directory.\n");
-            updateShellBadge("WORKSPACE ERROR", AMBER);
+            appendOutput("Could not create the workspace folder.\n");
+            updateShellBadge("Workspace error", AMBER);
             return;
         }
 
         File proot = new File(getApplicationInfo().nativeLibraryDir, "libproot-userland.so");
         File loader = new File(getApplicationInfo().nativeLibraryDir, "libproot-loader.so");
         if (!proot.isFile() || !loader.isFile()) {
-            appendOutput("The Linux runtime was not included in this build. Build the APK with the PAX Terminal GitHub Actions workflow.\n");
-            updateShellBadge("RUNTIME MISSING", AMBER);
+            appendOutput("The Linux runtime is missing from this build.\n");
+            updateShellBadge("Runtime missing", AMBER);
             return;
         }
 
         if (!new File(rootFsDirectory, ".pax-ready").isFile()) {
             environmentSetupInProgress = true;
-            updateShellBadge("PREPARING LINUX", AMBER);
-            appendOutput("Preparing the Debian ARM64 environment for first use. This step runs once and may take a little while.\n\n");
+            updateShellBadge("Preparing", AMBER);
+            appendOutput("Setting up the workspace. This happens once and may take a few minutes.\n\n");
             fileExecutor.execute(() -> {
                 try {
                     bootstrapLinuxEnvironment();
@@ -325,9 +356,9 @@ public final class MainActivity extends Activity {
                     deleteRecursively(rootFsDirectory);
                     runOnUiThread(() -> {
                         environmentSetupInProgress = false;
-                        updateShellBadge("SETUP FAILED", AMBER);
-                        appendOutput("[Could not prepare the Linux environment]\n" + safeMessage(exception) + "\n");
-                        appendOutput("Check that the APK was built by the repository workflow and has enough free storage, then reopen PAX Terminal.\n");
+                        updateShellBadge("Setup failed", AMBER);
+                        appendOutput("[Workspace setup failed]\n" + safeMessage(exception) + "\n");
+                        appendOutput("Make sure there is enough free storage, then restart the app.\n");
                     });
                 }
             });
@@ -356,22 +387,12 @@ public final class MainActivity extends Activity {
             command.add("-b"); command.add(homeDirectory.getAbsolutePath() + ":" + GUEST_HOME);
             command.add("-b"); command.add(homeDirectory.getAbsolutePath() + ":/workspace");
             command.add("-w"); command.add(GUEST_HOME);
-            command.add("/bin/bash");
-            command.add("--noprofile");
-            command.add("--norc");
-
-            File prootTempDirectory = new File(getFilesDir(), "proot-tmp");
-            if (!prootTempDirectory.isDirectory() && !prootTempDirectory.mkdirs()) {
-                throw new IllegalStateException(
-                        "Could not create the PRoot temporary directory.");
-            }
-            if (!prootTempDirectory.canWrite()) {
-                throw new IllegalStateException(
-                        "The PRoot temporary directory is not writable.");
-            }
-            try {
-                Os.chmod(prootTempDirectory.getAbsolutePath(), 0700);
-            } catch (Exception ignored) { }
+            // util-linux script allocates a real pseudo-terminal for bash, which
+            // enables readline, password prompts, ssh, top, and similar tools.
+            command.add("/usr/bin/script");
+            command.add("-qefc");
+            command.add("/bin/bash --noprofile --norc");
+            command.add("/dev/null");
 
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.directory(new File(getApplicationInfo().nativeLibraryDir));
@@ -384,32 +405,33 @@ public final class MainActivity extends Activity {
             env.put("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
             env.put("TERM", "dumb");
             env.put("LANG", "C.UTF-8");
-            env.put("PROOT_TMP_DIR", prootTempDirectory.getAbsolutePath());
-            env.remove("TMPDIR");
+            env.put("TMPDIR", "/tmp");
+            env.put("PS1", "");
+            env.put("PROMPT_COMMAND", "");
             Process startedProcess = builder.start();
             shellProcess = startedProcess;
             shellWriter = new BufferedWriter(new OutputStreamWriter(startedProcess.getOutputStream(), StandardCharsets.UTF_8));
             shellAlive = true;
             currentDirectory = GUEST_HOME;
             lastExitCode = 0;
-            updateShellBadge("LINUX ACTIVE", GREEN);
+            updateShellBadge("Ready", GREEN);
 
             Thread outputThread = new Thread(() -> readShellOutput(startedProcess), "pax-linux-output");
             outputThread.setDaemon(true);
             outputThread.start();
 
-            appendOutput("PAX TERMINAL  /  v0.4.8\n");
-            appendOutput("Debian GNU/Linux ARM64 workspace running under PRoot.\n");
-            appendOutput("Workspace: " + GUEST_HOME + "  |  Package command: pkg\n");
-            appendOutput("Start: pkg update\n");appendOutput("Install tools as needed: pkg install nodejs npm python git build-essential\n");
-            appendOutput("Check installed tools with: command -v node npm python3 git\n");
-            appendOutput("Developer commands: npm install  |  npm run dev  |  pnpm dev  |  deno task dev  |  npx tsc --noEmit\n");
-            appendOutput("Shared project folder: /home/pax and /workspace\n\n");
+            appendOutput("PAX Terminal 0.4.5\n");
+            appendOutput("Debian ARM64 workspace ready.\n");
+            appendOutput("Workspace: " + GUEST_HOME + "  |  Package manager: pkg\n");
+            appendOutput("Try: pkg update  |  pkg install nodejs npm pnpm python git deno build-essential\n");
+            appendOutput("Available: node  ·  npm  ·  pnpm  ·  python  ·  deno  ·  bun  ·  git\n");
+            appendOutput("Project commands: npm install  |  npm run dev  |  pnpm dev  |  deno task dev\n");
+            appendOutput("Shared folder: /home/pax and /workspace\n\n");
             showPrompt();
         } catch (Exception exception) {
             shellAlive = false;
-            updateShellBadge("SHELL ERROR", AMBER);
-            appendOutput("[Could not start the Linux shell]\n" + safeMessage(exception) + "\n");
+            updateShellBadge("Error", AMBER);
+            appendOutput("[Shell could not start]\n" + safeMessage(exception) + "\n");
         }
     }
 
@@ -487,44 +509,7 @@ public final class MainActivity extends Activity {
                 File parent = destination.getParentFile();
                 if (parent != null && !parent.exists()) parent.mkdirs();
                 deleteRecursively(destination);
-                try {
                 Os.link(source.getAbsolutePath(), destination.getAbsolutePath());
-            } catch (Exception hardLinkError) {
-                // Some Android devices deny hard links inside app storage.
-                // Fall back to a regular file copy and preserve file permissions.
-                int sourceMode = 0644;
-                try {
-                    sourceMode = Os.stat(source.getAbsolutePath()).st_mode & 07777;
-                } catch (Exception ignored) { }
-
-                boolean temporaryReadPermission = false;
-                try {
-                    if ((sourceMode & 0400) == 0) {
-                        Os.chmod(source.getAbsolutePath(), sourceMode | 0400);
-                        temporaryReadPermission = true;
-                    }
-
-                    deleteRecursively(destination);
-                    try (InputStream input = new FileInputStream(source);
-                         OutputStream output = new FileOutputStream(destination)) {
-                        byte[] copyBuffer = new byte[32 * 1024];
-                        int copyCount;
-                        while ((copyCount = input.read(copyBuffer)) != -1) {
-                            output.write(copyBuffer, 0, copyCount);
-                        }
-                    }
-                    applyTarMode(destination, sourceMode, false);
-                } catch (Exception copyError) {
-                    copyError.addSuppressed(hardLinkError);
-                    throw copyError;
-                } finally {
-                    if (temporaryReadPermission) {
-                        try {
-                            Os.chmod(source.getAbsolutePath(), sourceMode);
-                        } catch (Exception ignored) { }
-                    }
-                }
-            }
             }
 
             // Symbolic links are created after regular files, so archive paths never write
@@ -594,7 +579,7 @@ public final class MainActivity extends Activity {
                 "    packages=()\n" +
                 "    for name in \"$@\"; do\n" +
                 "      case \"$name\" in\n" +
-                "        python) packages+=(python3 python-is-python3) ;;\n" +
+                "        python) packages+=(python3) ;;\n" +
                 "        pip|python-pip) packages+=(python3-pip) ;;\n" +
                 "        node) packages+=(nodejs) ;;\n" +
                 "        nodejs-lts) packages+=(nodejs) ;;\n" +
@@ -753,7 +738,7 @@ public final class MainActivity extends Activity {
                         lastExitCode = exitCode;
                         runOnUiThread(() -> {
                             if (shellProcess != process || isFinishing()) return;
-                            updateShellBadge(exitCode == 0 ? "SHELL ACTIVE" : "EXIT CODE " + exitCode,
+                            updateShellBadge(exitCode == 0 ? "Ready" : "Exit " + exitCode,
                                     exitCode == 0 ? GREEN : AMBER);
                             showPrompt();
                         });
@@ -771,8 +756,8 @@ public final class MainActivity extends Activity {
                 shellAlive = false;
                 runOnUiThread(() -> {
                     if (shellProcess != process || isFinishing()) return;
-                    updateShellBadge("SHELL STOPPED", AMBER);
-                    appendOutput("\n[Shell stopped. Run another command to start a fresh shell.]\n");
+                    updateShellBadge("Stopped", AMBER);
+                    appendOutput("\n[Shell stopped. Run a command to restart it.]\n");
                     showPrompt();
                 });
             }
@@ -787,7 +772,7 @@ public final class MainActivity extends Activity {
     private void submitCommand() {
         if (commandInput == null) return;
         if (environmentSetupInProgress) {
-            appendOutput("[Linux environment is still being prepared. Please wait for LINUX ACTIVE.]");
+            appendOutput("[The workspace is still being set up. Please wait until it is ready.]\n");
             return;
         }
         String command = commandInput.getText().toString().trim();
@@ -804,7 +789,7 @@ public final class MainActivity extends Activity {
 
         if (!shellAlive || shellProcess == null || !shellProcess.isAlive()) startShell();
         if (!shellAlive || shellWriter == null) {
-            appendOutput("[Shell is unavailable. Try MORE → Restart shell, or reopen the app.]\n");
+            appendOutput("[The shell is unavailable. Open Tools and choose Restart shell.]\n");
             return;
         }
         appendOutput(promptText() + command + "\n");
@@ -816,8 +801,8 @@ public final class MainActivity extends Activity {
             shellWriter.flush();
         } catch (Exception exception) {
             shellAlive = false;
-            updateShellBadge("SHELL ERROR", AMBER);
-            appendOutput("[Could not send command] " + safeMessage(exception) + "\n");
+            updateShellBadge("Error", AMBER);
+            appendOutput("[Command could not be sent] " + safeMessage(exception) + "\n");
         }
     }
 
@@ -837,7 +822,7 @@ public final class MainActivity extends Activity {
             clearTerminal();
             showPrompt();
         } else if (command.equals("history")) {
-            appendOutput("COMMAND HISTORY (latest first is not implied; ↑ / ↓ navigates)\n");
+            appendOutput("COMMAND HISTORY  ·  Use ↑ / ↓ to browse\n");
             int start = Math.max(0, commandHistory.size() - MAX_HISTORY);
             for (int i = start; i < commandHistory.size(); i++) {
                 appendOutput(String.format(java.util.Locale.ROOT, "%3d  %s\n", i + 1, commandHistory.get(i)));
@@ -848,7 +833,7 @@ public final class MainActivity extends Activity {
             showFileBrowser();
             showPrompt();
         } else {
-            appendOutput("PAX Terminal v0.4.8 — Debian ARM64 developer environment.\n\n");
+            appendOutput("PAX Terminal v0.4.5\n\n");
             showPrompt();
         }
     }
@@ -870,43 +855,39 @@ public final class MainActivity extends Activity {
     }
 
     private void showHelp() {
-        appendOutput("PAX TERMINAL HELP  /  v0.4.8\n");
-        appendOutput("────────────────────────────────────────────\n");
-        appendOutput("Shell: pwd, ls -la, cd, find, grep, cat, echo, date, id\n");
-        appendOutput("Packages: pkg update  |  pkg install git nodejs npm python python-pip build-essential\n");
-        appendOutput("Node.js: node --version  |  npm install  |  npm run dev  |  npm test\n");
-        appendOutput("pnpm: pnpm install  |  pnpm dev  |  pnpm test\n");
-        appendOutput("Deno: deno --version  |  deno run main.ts  |  deno task dev  |  deno test\n");
-        appendOutput("Bun: bun --version  |  bun install  |  bun run dev  |  bun test\n");
-        appendOutput("Background server: pax-bg dev npm run dev -- --host 0.0.0.0\n");
-        appendOutput("Jobs/logs: pax-jobs  |  pax-logs dev  |  pax-stop dev\n");
-        appendOutput("TypeScript: tsc --version  |  npx tsc --noEmit  |  tsx script.ts\n");
-        appendOutput("Python: python --version  |  python -m venv .venv  |  python -m unittest\n");
-        appendOutput("Android SDK: sdkmanager --list  |  adb version (package availability varies)\n");
-        appendOutput("Java: pkg install default-jdk-headless gradle\n");
-        appendOutput("Git: git status  |  git clone <repository-url>\n");
-        appendOutput("PAX helpers: help, clear, history, files, pax-about\n");
-        appendOutput("Use ↑ / ↓ on a hardware keyboard to browse command history.\n");
-        appendOutput("FILES browses /home/pax and /workspace (the same shared folder). MORE imports or exports files.\n\n");
-        appendOutput("ENVIRONMENT NOTES\n");
-        appendOutput("• Commands run in a Debian ARM64 userspace under PRoot.\n");
-        appendOutput("• Minimal environment: install development tools when needed; Deno and Bun require separate installation.\n");
-        appendOutput("• pkg is a compatibility command backed by Debian apt; use Debian package names.\n");
-        appendOutput("• This build uses line-oriented input rather than a full PTY; use pax-bg/pax-jobs/pax-logs/pax-stop for background services.\n");
-        appendOutput("• The Android app remains sandboxed; simulated Linux root is not Android root.\n");
-        appendOutput("• Debian SDK packages can be installed with pkg; current Android builds are most dependable through GitHub Actions.\n\n");
+        appendOutput("PAX TERMINAL  ·  HELP\n\n");
+        appendOutput("Common commands\n");
+        appendOutput("  pwd   ls -la   cd   find   grep   cat   echo   date   id\n\n");
+        appendOutput("Packages\n");
+        appendOutput("  pkg update\n");
+        appendOutput("  pkg install nodejs npm pnpm git python deno build-essential\n\n");
+        appendOutput("Run a project\n");
+        appendOutput("  npm install   npm run dev   npm test\n");
+        appendOutput("  pnpm install  pnpm dev      pnpm test\n");
+        appendOutput("  deno task dev  ·  bun run dev  ·  npx tsc --noEmit\n\n");
+        appendOutput("Background jobs\n");
+        appendOutput("  pax-bg dev npm run dev -- --host 0.0.0.0\n");
+        appendOutput("  pax-jobs   pax-logs dev   pax-stop dev\n\n");
+        appendOutput("Shortcuts\n");
+        appendOutput("  help     show this page\n");
+        appendOutput("  clear    clear the screen\n");
+        appendOutput("  history  show recent commands\n");
+        appendOutput("  files    open the workspace\n");
+        appendOutput("\nThe workspace is available at /home/pax and /workspace.\n");
+        appendOutput("Use Files to browse, import, or export project files.\n");
+        appendOutput("\n");
     }
 
     private void showMoreMenu() {
         String[] actions = {
-                "Go to workspace home",
-                "Import a file into workspace",
-                "Export a workspace file",
-                "Stop current process / restart shell",
-                "About PAX Terminal"
+                "Open workspace home",
+                "Import file",
+                "Export file",
+                "Restart shell",
+                "About"
         };
         new AlertDialog.Builder(this)
-                .setTitle("PAX TERMINAL · TOOLS")
+                .setTitle("Tools")
                 .setItems(actions, (dialog, which) -> {
                     if (which == 0) executeCommand("cd \"$HOME\"");
                     else if (which == 1) beginImportFile();
@@ -914,15 +895,15 @@ public final class MainActivity extends Activity {
                     else if (which == 3) restartShell();
                     else showAbout();
                 })
-                .setNegativeButton("CLOSE", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
     private void showAbout() {
         new AlertDialog.Builder(this)
-                .setTitle("PAX Terminal v0.4.8")
-                .setMessage("A native Android terminal with a minimal Debian ARM64 environment. Install development tools when needed with pkg; the shared workspace is exposed at /home/pax and /workspace.\n\nThe pkg command uses Debian apt repositories and package names. PRoot provides a rootless Linux environment; it does not grant Android root access. This version uses line-oriented input rather than a full PTY, so full-screen interactive applications are not guaranteed. Use pax-bg, pax-jobs, pax-logs and pax-stop to run and manage background services. Modern Android APK builds are most reliable through the included GitHub Actions workflow.")
-                .setPositiveButton("OK", null)
+                .setTitle("PAX Terminal v0.4.5")
+                .setMessage("A Debian ARM64 terminal for Android.\n\nWorkspace\n/home/pax  ·  /workspace\n\nIncludes Node.js, Python, Git, package tools, and a PTY-backed shell. The app stays inside Android’s private storage and does not provide Android root access.")
+                .setPositiveButton("Done", null)
                 .show();
     }
 
@@ -969,9 +950,9 @@ public final class MainActivity extends Activity {
             else labels.add("·  " + item.getName() + "  (" + readableSize(item.length()) + ")");
         }
         if (entries.isEmpty()) {
-            new AlertDialog.Builder(this).setTitle("FILES · " + directory.getName())
-                    .setMessage("No readable files or folders here.")
-                    .setPositiveButton("CLOSE", null).show();
+            new AlertDialog.Builder(this).setTitle(directory.getName())
+                    .setMessage("This folder is empty.")
+                    .setPositiveButton("Done", null).show();
             return;
         }
 
@@ -986,7 +967,7 @@ public final class MainActivity extends Activity {
                         showFileActions(selected);
                     }
                 })
-                .setNegativeButton("CLOSE", null)
+                .setNegativeButton("Done", null)
                 .show();
     }
 
@@ -1003,7 +984,11 @@ public final class MainActivity extends Activity {
     }
 
     private void showFileActions(File file) {
-        String[] actions = {"Preview text", "Insert cat command", "Export this file"};
+        if (!isSafeWorkspaceFile(file)) {
+            Toast.makeText(this, "Symlinks and files outside the workspace are not supported here.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] actions = {"Preview", "Insert cat command", "Export"};
         new AlertDialog.Builder(this).setTitle(file.getName()).setItems(actions, (dialog, which) -> {
             if (which == 0) previewFile(file);
             else if (which == 1) {
@@ -1012,18 +997,25 @@ public final class MainActivity extends Activity {
                 commandInput.setSelection(commandInput.length());
                 showKeyboard();
             } else beginExportFile(file);
-        }).setNegativeButton("CANCEL", null).show();
+        }).setNegativeButton("Cancel", null).show();
     }
 
     private void previewFile(File file) {
         fileExecutor.execute(() -> {
             String content;
+            try {
+                if (!isSafeWorkspaceFile(file)) throw new IllegalStateException("The workspace file is no longer safe to read.");
+            } catch (Exception exception) {
+                final String message = "[Could not preview file]\n" + safeMessage(exception);
+                runOnUiThread(() -> appendOutput(message + "\n"));
+                return;
+            }
             try (InputStream input = new FileInputStream(file);
                  InputStreamReader reader = new InputStreamReader(input, StandardCharsets.UTF_8)) {
                 StringBuilder out = new StringBuilder();
                 char[] buffer = new char[2048];
                 int read;
-                while (out.length() < MAX_PREVIEW_CHARS && (read = reader.read(buffer, 0,
+                while (!Thread.currentThread().isInterrupted() && out.length() < MAX_PREVIEW_CHARS && (read = reader.read(buffer, 0,
                         Math.min(buffer.length, MAX_PREVIEW_CHARS - out.length()))) != -1) {
                     out.append(buffer, 0, read);
                 }
@@ -1044,7 +1036,7 @@ public final class MainActivity extends Activity {
                 ScrollView scroll = new ScrollView(this);
                 scroll.addView(body);
                 new AlertDialog.Builder(this).setTitle(file.getName())
-                        .setView(scroll).setPositiveButton("CLOSE", null).show();
+                        .setView(scroll).setPositiveButton("Done", null).show();
             });
         });
     }
@@ -1070,16 +1062,16 @@ public final class MainActivity extends Activity {
             }
         }
         if (files.isEmpty()) {
-            Toast.makeText(this, "No files in the workspace yet. Create one with echo hello > hello.txt.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No files in the workspace yet.", Toast.LENGTH_LONG).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("EXPORT A WORKSPACE FILE")
+        new AlertDialog.Builder(this).setTitle("Export a file")
                 .setItems(labels.toArray(new String[0]), (dialog, which) -> beginExportFile(files.get(which)))
-                .setNegativeButton("CANCEL", null).show();
+                .setNegativeButton("Cancel", null).show();
     }
 
     private void beginExportFile(File file) {
-        if (file == null || !file.isFile() || !file.canRead()) {
+        if (!isSafeWorkspaceFile(file)) {
             Toast.makeText(this, "This file cannot be exported.", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1094,10 +1086,17 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            if (requestCode == REQUEST_EXPORT_FILE) pendingExportFile = null;
+            return;
+        }
         Uri uri = data.getData();
         if (requestCode == REQUEST_IMPORT_FILE) importFile(uri);
-        else if (requestCode == REQUEST_EXPORT_FILE) exportFile(uri, pendingExportFile);
+        else if (requestCode == REQUEST_EXPORT_FILE) {
+            File source = pendingExportFile;
+            pendingExportFile = null;
+            exportFile(uri, source);
+        }
     }
 
     private void importFile(Uri uri) {
@@ -1112,9 +1111,7 @@ public final class MainActivity extends Activity {
                 try (InputStream input = getContentResolver().openInputStream(uri);
                      OutputStream output = new FileOutputStream(destination)) {
                     if (input == null) throw new IllegalStateException("The selected file could not be opened.");
-                    byte[] buffer = new byte[8192];
-                    int read;
-                    while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+                    copyStreamLimited(input, output);
                 }
                 result = "Imported to workspace: " + destination.getName();
             } catch (Exception exception) {
@@ -1122,7 +1119,7 @@ public final class MainActivity extends Activity {
             }
             final String message = result;
             runOnUiThread(() -> {
-                appendOutput("\n[PAX FILES] " + message + "\n");
+                appendOutput("\n[Files] " + message + "\n");
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show();
                 showPrompt();
             });
@@ -1130,22 +1127,20 @@ public final class MainActivity extends Activity {
     }
 
     private void exportFile(Uri uri, File source) {
-        if (source == null || uri == null) return;
+        if (uri == null || !isSafeWorkspaceFile(source)) return;
         fileExecutor.execute(() -> {
             String result;
             try (InputStream input = new FileInputStream(source);
                  OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
                 if (output == null) throw new IllegalStateException("The chosen destination could not be opened.");
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+                copyStreamLimited(input, output);
                 result = "Exported: " + source.getName();
             } catch (Exception exception) {
                 result = "Export failed: " + safeMessage(exception);
             }
             final String message = result;
             runOnUiThread(() -> {
-                appendOutput("\n[PAX FILES] " + message + "\n");
+                appendOutput("\n[Files] " + message + "\n");
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show();
                 showPrompt();
             });
@@ -1162,18 +1157,45 @@ public final class MainActivity extends Activity {
         } catch (Exception ignored) { }
         return name == null ? "imported-file" : name;
     }
+    private void copyStreamLimited(InputStream input, OutputStream output) throws Exception {
+        byte[] buffer = new byte[8192];
+        long total = 0;
+        int read;
+        while ((read = input.read(buffer)) != -1) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new java.io.InterruptedIOException("File transfer cancelled");
+            }
+            total += read;
+            if (total > MAX_FILE_TRANSFER_BYTES) {
+                throw new IllegalStateException("File transfer exceeds the 512 MiB safety limit.");
+            }
+            output.write(buffer, 0, read);
+        }
+    }
 
     private File uniqueDestination(File requested) {
-        if (!requested.exists()) return requested;
+        if (!requested.exists() && !isSymbolicLink(requested)) return requested;
         String name = requested.getName();
         int dot = name.lastIndexOf('.');
         String stem = dot > 0 ? name.substring(0, dot) : name;
         String suffix = dot > 0 ? name.substring(dot) : "";
         for (int index = 2; index < 10_000; index++) {
             File candidate = new File(requested.getParentFile(), stem + " (" + index + ")" + suffix);
-            if (!candidate.exists()) return candidate;
+            if (!candidate.exists() && !isSymbolicLink(candidate)) return candidate;
         }
         return new File(requested.getParentFile(), "import-" + System.currentTimeMillis() + suffix);
+    }
+    private boolean isSafeWorkspaceFile(File file) {
+        if (file == null || homeDirectory == null || isSymbolicLink(file) || !file.isFile() || !file.canRead()) {
+            return false;
+        }
+        try {
+            File workspace = homeDirectory.getCanonicalFile();
+            File candidate = file.getCanonicalFile();
+            return candidate.getPath().startsWith(workspace.getPath() + File.separator);
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void executeCommand(String command) {
@@ -1209,6 +1231,13 @@ public final class MainActivity extends Activity {
         if (shellStatusBadge == null) return;
         shellStatusBadge.setText(text);
         shellStatusBadge.setTextColor(color);
+        shellStatusBadge.setContentDescription("Shell status: " + text + ". Tap for terminal tools.");
+        if (runButton != null) {
+            boolean preparing = "Preparing".equals(text);
+            runButton.setEnabled(!preparing);
+            runButton.setAlpha(preparing ? 0.55f : 1.0f);
+        }
+        shellStatusBadge.announceForAccessibility(text);
     }
 
     private void clearTerminal() {

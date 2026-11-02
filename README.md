@@ -1,4 +1,4 @@
-# PAX Terminal v0.4.8
+# PAX Terminal v0.4.5
 
 PAX Terminal is an Android terminal app that runs a Debian ARM64 userspace inside the app's private storage using PRoot. This release targets developer workflows on compatible 64-bit ARM Android devices.
 
@@ -52,11 +52,13 @@ The base environment includes Debian's SDK/platform-tools packages when availabl
 
 ## Build the APK
 
-1. Push this source tree to the `main` branch of your GitHub repository.
-2. Open **Actions** and select **Build PAX Terminal APK**.
-3. Wait for the workflow to complete successfully.
-4. Download `pax-terminal-v0.4.8-debug-apk` and extract `app-debug.apk`.
-5. Install the APK on a compatible ARM64 Android device.
+The repository includes a Gradle 8.9 wrapper. For a local build, use `./gradlew` rather than a machine-installed Gradle version. The first run downloads the pinned Gradle distribution.
+
+```sh
+./gradlew --no-daemon --max-workers=2 clean assembleDebug
+```
+
+For the complete APK, push this source tree to the `main` branch of your GitHub repository, open **Actions**, and select **Build PAX Terminal APK**. The workflow builds the native PRoot runtime and Debian root filesystem before running `./gradlew`. Download `pax-terminal-v0.4.5-debug-apk` and extract `app-debug.apk` after a successful run.
 
 The workflow builds the PRoot runtime and Debian root filesystem on a GitHub-hosted runner, verifies the expected runtime commands, builds the Android app, and checks that the APK contains the Linux runtime assets. The source ZIP is not itself an APK. A successful workflow and on-device testing are still required before describing the build as verified.
 
@@ -64,8 +66,10 @@ The workflow builds the PRoot runtime and Debian root filesystem on a GitHub-hos
 
 - Requires a 64-bit ARM Android device (arm64-v8a) for this build.
 - Commands run inside PRoot and Android's app sandbox. This does not grant Android root access.
-- This is a line-oriented terminal interface, not a full PTY emulator. Interactive full-screen programs, terminal escape handling, and job control may be limited.
+- The shell is launched through Debian `script`/util-linux to provide a PTY. Interactive programs are supported more reliably, but the Android view is still not a full terminal emulator: terminal escape rendering, resize signaling, and some job-control behavior may be limited.
 - Build tooling availability depends on Debian repositories, network access, architecture support, and device resources.
+- The bundled pnpm, TypeScript, tsx, Deno, and Bun tool versions are pinned in `runtime/Dockerfile.debian`; changing them requires rebuilding the root filesystem and APK.
+- File import/export is capped at 512 MiB per transfer to protect app storage and memory; rootfs extraction has its own expansion limit.
 
 ## License
 

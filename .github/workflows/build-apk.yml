@@ -129,21 +129,22 @@ jobs:
             --file runtime/Dockerfile.debian \
             --tag pax-terminal-rootfs:trixie .
           docker run --rm --platform linux/arm64 pax-terminal-rootfs:trixie \
-            bash -lc 'bash --version | head -n 1 && apt-get --version | head -n 1 && git --version && curl --version | head -n 1'
+            bash -lc 'node --version && npm --version && pnpm --version && tsc --version && tsx --version && python --version && git --version && deno --version && bun --version && bash --version | head -n 1'
           container_id="$(docker create --platform linux/arm64 pax-terminal-rootfs:trixie)"
           trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
           mkdir -p app/src/main/assets
-          docker export "$container_id" | gzip -9 > app/src/main/assets/debian-rootfs-arm64.rootfs
-          gzip -t app/src/main/assets/debian-rootfs-arm64.rootfs
-          tar -tzf app/src/main/assets/debian-rootfs-arm64.rootfs >/dev/null
-          ls -lh app/src/main/assets/debian-rootfs-arm64.rootfs
+          docker export "$container_id" | gzip -1 > app/src/main/assets/debian-rootfs-arm64.tar.gz
+          gzip -t app/src/main/assets/debian-rootfs-arm64.tar.gz
+          tar -tzf app/src/main/assets/debian-rootfs-arm64.tar.gz >/dev/null
+          ls -lh app/src/main/assets/debian-rootfs-arm64.tar.gz
           docker rm "$container_id"
           trap - EXIT
 
-      - name: Set up Gradle 8.9
+      - name: Set up Gradle wrapper
         uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "8.9"
+
+      - name: Verify Gradle wrapper
+        run: ./gradlew --version
 
       - name: Validate project source
         run: bash scripts/validate-source.sh
@@ -152,13 +153,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'noCompress += "rootfs"' app/build.gradle.kts
+          grep -Fq 'noCompress += "gz"' app/build.gradle.kts
           grep -Fq 'org.gradle.jvmargs=-Xmx4g' gradle.properties
           grep -Fq 'org.gradle.parallel=false' gradle.properties
           echo 'gzip assets will be stored without recompression; Gradle workers are bounded.'
 
       - name: Build debug APK
-        run: gradle --no-daemon --max-workers=2 --stacktrace clean assembleDebug
+        run: ./gradlew --no-daemon --max-workers=2 --stacktrace clean assembleDebug
 
       - name: Verify APK and bundled runtime
         shell: bash
@@ -178,12 +179,12 @@ jobs:
           APK_ENTRIES="$RUNNER_TEMP/pax-terminal-apk-entries.txt"
           unzip -Z1 "$APK" > "$APK_ENTRIES"
           echo "Relevant bundled APK entries:"
-          grep -E '(^|/)(libproot-userland\.so|libproot-loader\.so|debian-rootfs-arm64\.rootfs)$' "$APK_ENTRIES" || true
+          grep -E '(^|/)(libproot-userland\.so|libproot-loader\.so|debian-rootfs-arm64\.tar\.gz)$' "$APK_ENTRIES" || true
 
           required_entries=(
             'lib/arm64-v8a/libproot-userland.so'
             'lib/arm64-v8a/libproot-loader.so'
-            'assets/debian-rootfs-arm64.rootfs'
+            'assets/debian-rootfs-arm64.tar.gz'
           )
           for required in "${required_entries[@]}"; do
             if ! grep -Fxq "$required" "$APK_ENTRIES"; then
@@ -200,7 +201,7 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v7
         with:
-          name: pax-terminal-v0.4.8-debug-apk
+          name: pax-terminal-v0.4.5-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256
